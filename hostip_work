@@ -1,0 +1,136 @@
+import openpyxl
+from openpyxl import Workbook
+from openpyxl import load_workbook
+import re
+import os
+import shutil
+
+
+'''
+copy_host函数负责将漏洞扫描记录单ip列的每一格复制到对应的一个txt文件中
+'''
+def copy_host():
+
+    '''
+    1:修改 filename后面的文件路径以及最新文件名称
+    '''
+
+    wb=load_workbook(filename=r'./漏扫记录单.xlsx')
+
+    '''
+    2:修改sheet名称，把下面‘运行整改记录单’修改为想要获取ip所对应的sheet名称,
+    比如想获取联调整改记录单就改成联调整改记录单
+    '''
+    sheet1=wb['5月中危联调']
+    for i in range(1,int(row_num)+1):
+
+        with open(r'.\loudongsaomiao/'+str(i)+'.txt','a+',encoding='utf-8') as f:
+            f.write(sheet1[column_num+str(i)].value) if sheet1[column_num+str(i)].value else f.write('')
+
+
+    return row_num,column_num
+
+'''新建一个文件夹，里面放空txt文件'''
+
+def mkdir_txt(row_num):
+
+    for i in range(1,int(row_num)+1):
+        with open(r'.\lousaonew/'+str(i)+'.txt','a+',encoding='utf-8') as f:
+            f.read()
+
+'''
+将匹配后的新数据从旧txt写到新txt里
+'''
+def findWrite_host(row_num):
+    '''
+    5：下面是修改你整理好的想要去查询的那个表格的路径，也就是之前给我发的工作簿3那个
+    记得整理的表格时候一定要和之前工作簿3格式一样，一共有3列，第一列是ip，第二列是用途，第三列是申请人
+
+    '''
+    wb = load_workbook(filename='.\工作簿3.xlsx')
+    '''
+    6:下面是修改那个表格的sheet名称，默认应该叫Sheet1
+    '''
+    sheet1 = wb['Sheet1']
+    for yea in range(1,int(row_num)+1):
+        print('正在检索第',str(yea),'格数据')
+        f=open('.\loudongsaomiao/'+str(yea)+'.txt','r',encoding='utf-8')
+        ff=open('.\lousaonew/'+str(yea)+'.txt','a+',encoding='utf-8')
+        p=f.readlines()
+        p = [x.strip() for x in p if x.strip() != '']
+        for i in p[:]:
+
+            for j in range(1, int(row2_num)+1):
+                if sheet1['A' + str(j)].value == i:
+                    if sheet1['B' + str(j)].value is not None:
+                        if sheet1['C' + str(j)].value is not None:
+                            ff.write(i + '   ' + str(sheet1['B' + str(j)].value) + '   ' + str(sheet1['C' + str(j)].value) + '\n')
+                            p.remove(i)
+                        if sheet1['C' + str(j)].value is None:
+                            ff.write(i + '   ' + str(sheet1['B' + str(j)].value) + '\n')
+                            p.remove(i)
+
+                    if sheet1['B' + str(j)].value is None:
+                        if sheet1['C' + str(j)].value is not None:
+                            ff.write(i + '   ' + str(sheet1['C' + str(j)].value) + '\n')
+                            p.remove(i)
+                        if sheet1['C' + str(j)].value is None:
+                            ff.write(i + '\n')
+                            p.remove(i)
+
+        for x in p:
+            ff.write(x + '\n')
+
+        ff.close()
+        f.close()
+
+
+'''新txt里的写入整改记录单'''
+def write_end(row_num,column_num):
+    '''
+    8: 和1一样，改下面的路径名字
+    '''
+    wb = load_workbook(filename='.\漏扫记录单.xlsx')
+    '''
+    9:和2一样的改下面sheet名字
+    '''
+    sheet1 = wb['5月中危联调']
+    for i in range(1,int(row_num)+1):
+        f=open('.\lousaonew/'+str(i)+'.txt','r',encoding='utf-8')
+        c=f.read()
+        # print(c)
+        sheet1[column_num+str(i)]=c
+
+        '''
+        10:和8一样的改下面的路径名字
+        '''
+        wb.save('.\漏扫记录单.xlsx')
+        f.close()
+
+def Delete_File_Dir(dirName):
+    shutil.rmtree(dirName)
+
+
+
+if __name__ == '__main__':
+    os.makedirs('.\loudongsaomiao')
+    os.makedirs('.\lousaonew')
+    '''
+    3:输入漏漏扫记录单想要获取ip那列的多少行数据
+    '''
+    row_num = input('输入漏扫整改记录单表格里想要获取ip那列多少行的数据:')
+    '''
+    4：输入漏扫记录单的ip在哪列
+    '''
+    column_num = input('输入漏扫整改记录单的ip列数，在哪列就填写哪列:').upper()
+    '''
+
+    7:输入整理好的这个工作簿3表格一共的行数
+    '''
+    row2_num = input('请输入整理好的工作簿3这个表格一共的行数：')
+    c=copy_host()
+    mkdir_txt(c[0])
+    findWrite_host(c[0])
+    write_end(c[0], c[1])
+    Delete_File_Dir(r'.\loudongsaomiao')
+    Delete_File_Dir(r'.\lousaonew')
