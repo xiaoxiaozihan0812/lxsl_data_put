@@ -1,0 +1,123 @@
+import openpyxl
+from openpyxl import load_workbook
+import re
+import time
+import os
+import shutil
+class RemoveWork:
+    def __init__(self,wb,sheet):
+        self.wb=wb
+        self.wb2=load_workbook(filename='可接受风险记录单.xlsx')
+        self.lousaosheet=self.wb[sheet]
+        self.kejieshousheet=self.wb2['漏洞扫描可接受风险清单']
+
+    def comparecve(self,cvecolumn):
+        sheet1list=[]
+
+        for i in range(len(self.lousaosheet[cvecolumn])):
+            for j in range(len(self.kejieshousheet['C'])):
+                try:
+                    if self.kejieshousheet['C'+str(j+2)].value in self.lousaosheet[cvecolumn+str(i+2)].value:
+                        sheet1list.append(['漏扫记录单%d' %(i+2),'可接受风险记录单%d'%(j+2)])
+                except Exception as e:
+                    pass
+
+        # print(sheet1list)
+        return sheet1list
+    def repattern(self,stringl):
+        pat=re.compile(r'\d+')
+        string=pat.findall(stringl)
+        return string
+
+    def resolvecom(self,sheet1,ipcolume):
+        sheet1=sheet1
+
+        for i in sheet1:
+            c=self.repattern(str(i))
+
+            with open(r'./漏扫记录单汇总/'+str(int(round(time.time()*1000)))+'-'+c[0]+'.txt','a+',encoding='utf-8') as f:
+                f.write(self.lousaosheet[ipcolume+c[0]].value)
+                time.sleep(0.1)
+            with open(r'./可接受风险记录单汇总/'+str(int(round(time.time()*1000)))+'-'+c[1]+'.txt','a+',encoding='utf-8') as f:
+                f.write(self.kejieshousheet['D'+c[1]].value)
+                time.sleep(0.1)
+        path1=os.listdir(r'./漏扫记录单汇总/')
+        path2=os.listdir(r'./可接受风险记录单汇总/')
+
+        for i in path1:
+            with open(r'.\漏扫记录单汇总new/' + i, 'a+', encoding='utf-8') as f:
+                f.read()
+
+        for i in range(len(path1)):
+            f=open(r'./漏扫记录单汇总/'+path1[i],'r',encoding='utf-8')
+            ff=open(r'./可接受风险记录单汇总/'+path2[i],'r',encoding='utf-8')
+            p = f.readlines()
+            pp=ff.readlines()
+            p = [x.strip() for x in p if x.strip() != '']
+            pp=[x.strip() for x in pp if x.strip() != '']
+            f.close()
+            ff.close()
+            for j in p[:]:
+                for k in pp[:]:
+                    if j ==k:
+                        try:
+                            p.remove(j)
+                        except:
+                            pass
+            for x in p:
+                t = open(r'./漏扫记录单汇总new/' + path1[i], 'a+', encoding='utf-8')
+                t.write(x+'\n')
+                t.close()
+    def deletesame(self):
+        path1=os.listdir(r'./漏扫记录单汇总new')
+        list1=[]
+        for i in range(len(path1)-1):
+            for j in range(len(path1)-1-i):
+                if re.search(r'.*?-(\d+).txt', path1[j]).group(1)==re.search(r'.*?-(\d+).txt', path1[j+1]).group(1):
+                    if len(open(r'./漏扫记录单汇总new/'+path1[j],'r',encoding='utf-8').readlines())>len(open(r'./漏扫记录单汇总new/'+path1[j+1],'r',encoding='utf-8').readlines()):
+                        path1[j],path1[j+1]=path1[j+1],path1[j]
+
+
+        # print(path1)
+        # for i in range(len(path1)-1):
+        #     if re.search(r'.*?-(\d+).txt', path1[i]).group(1) == re.search(r'.*?-(\d+).txt', path1[i + 1]).group(1):
+        #         if len(open(r'./漏扫记录单汇总new/' + path1[i], 'r', encoding='utf-8').readlines()) < len(open(r'./漏扫记录单汇总new/' + path1[i + 1], 'r', encoding='utf-8').readlines()):
+        #             list1.append(r'./漏扫记录单汇总new/'+path1[i+1])
+        #
+        # for i in list1:
+        #     os.remove(i)
+        return os.listdir(r'./漏扫记录单汇总new')
+    def writein(self,file1,ipcolumn):
+        column=[]
+        for i in file1:
+            c=re.search(r'.*?-(\d+).txt', i).group(1)
+            column.append(c)
+        for i in range(len(column)):
+            self.lousaosheet[ipcolumn+column[i]]=open(r'./漏扫记录单汇总new/'+file1[i],'r',encoding='utf-8').read()
+            open(r'./漏扫记录单汇总new/' + file1[i], 'r', encoding='utf-8').close()
+        self.wb.save(filename='00/漏扫记录单.xlsx')
+
+
+    def run(self):
+        cvecolumn=input('输入漏扫记录单的'+sheet+'cve在哪列：').upper()
+        ipcolumn=input('输入漏扫记录单的'+sheet+'ip在哪列：').upper()
+        sheet1=self.comparecve(cvecolumn)
+        self.resolvecom(sheet1,ipcolumn)
+        file1=self.deletesame()
+        self.writein(file1,ipcolumn)
+
+if __name__ == '__main__':
+
+    wb = openpyxl.load_workbook(filename=r'./漏扫记录单.xlsx')
+    sheets = wb.get_sheet_names()
+    for sheet in sheets:
+        print('正在打开表格...')
+        rm=RemoveWork(wb,sheet)
+        print('打开完成，开始读取数据')
+        os.makedirs('./漏扫记录单汇总')
+        os.makedirs('./可接受风险记录单汇总')
+        os.makedirs(r'./漏扫记录单汇总new')
+        rm.run()
+        shutil.rmtree(r'./漏扫记录单汇总')
+        shutil.rmtree('./可接受风险记录单汇总')
+        shutil.rmtree('./漏扫记录单汇总new')
